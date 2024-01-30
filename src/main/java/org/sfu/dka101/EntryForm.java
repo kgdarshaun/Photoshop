@@ -12,7 +12,6 @@ import java.awt.image.ColorModel;
 import java.awt.image.WritableRaster;
 import java.io.File;
 import java.io.IOException;
-import java.nio.Buffer;
 
 public class EntryForm extends JFrame{
 
@@ -31,10 +30,10 @@ public class EntryForm extends JFrame{
     private JButton button2;
     private JLabel image1;
     private JLabel image2;
-    private JPanel OpenClose;
-    private JPanel CoreOperations;
-    private JPanel OptOperations;
     private JPanel Images;
+    private JPanel OptOperations;
+    private JPanel CoreOperations;
+    private JPanel OpenClose;
 
     public EntryForm() {
         setContentPane(EntryPanel);
