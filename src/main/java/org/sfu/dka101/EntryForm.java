@@ -42,6 +42,7 @@ public class EntryForm extends JFrame{
         setSize(2048, 1536);
         setLocationRelativeTo(null);
         setVisible(true);
+        openFileButton.requestFocus();
 
         openFileButton.addActionListener(new ActionListener() {
             @Override
