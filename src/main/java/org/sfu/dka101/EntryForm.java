@@ -51,6 +51,8 @@ public class EntryForm extends JFrame{
                     throw new RuntimeException(ex);
                 }
             }
+            updateLastOperation(Operations.OPEN);
+            newImage.setIcon(null   );
         });
 
         exitButton.addActionListener(e -> System.exit(0));
