@@ -7,4 +7,6 @@ public enum Operations {
     ORDERED_DITHERING,
     AUTO_LEVEL,
     HUFFMAN,
+    LENS_BLUR,
+    VIGNETTE
 }

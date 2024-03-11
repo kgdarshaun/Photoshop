@@ -18,10 +18,9 @@ public class GrayscaleTransformer implements Transformer {
             for (int col = 0; col < image.getHeight(); col++) {
                 int rgbValue = image.getRGB(row, col);
                 float rValue = new Color(rgbValue).getRed();
-                float gValue = new Color(rgbValue).getBlue();
-                float bValue = new Color(rgbValue).getGreen();
-//                TODO: check what to do with Alpha value
-//                float aValue = new Color(rgbValue).getAlpha();
+                float gValue = new Color(rgbValue).getGreen();
+                float bValue = new Color(rgbValue).getBlue();
+
                 int grayscale = (int) ((0.299 * rValue) + (0.587 * gValue) + (0.114 * bValue));
                 convertedImage.setRGB(row, col, new Color(grayscale, grayscale, grayscale).getRGB());
             }
