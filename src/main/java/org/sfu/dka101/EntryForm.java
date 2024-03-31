@@ -3,6 +3,7 @@ package org.sfu.dka101;
 import org.sfu.dka101.enums.Operations;
 import org.sfu.dka101.huffman.HuffmanEncoding;
 import org.sfu.dka101.operations.TransformSelector;
+import org.sfu.dka101.utils.BmpFileOperations;
 import org.sfu.dka101.utils.Entropy;
 import org.sfu.dka101.utils.ImageUtil;
 
@@ -10,12 +11,9 @@ import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
-import java.util.List;
 
 public class EntryForm extends JFrame{
 
@@ -38,6 +36,7 @@ public class EntryForm extends JFrame{
     private JPanel OptOperations;
     private JPanel CoreOperations;
     private JPanel OpenClose;
+    private JButton saveFileButton;
 
     public EntryForm() {
         setContentPane(EntryPanel);
@@ -48,20 +47,28 @@ public class EntryForm extends JFrame{
         setVisible(true);
         openFileButton.requestFocus();
 
+        JFileChooser bmpFileChooser = BmpFileOperations.getBmpFileChooser();
+
         openFileButton.addActionListener(e -> {
-            JFileChooser jFileChooser = new JFileChooser();
-            if (jFileChooser.showOpenDialog(EntryForm.this) == JFileChooser.APPROVE_OPTION) {
-                File f = jFileChooser.getSelectedFile();
-                try {
-                    currentImage = ImageUtil.readImage(f);
-                    oldImage.setIcon(new ImageIcon(currentImage));
-                } catch (IOException ex) {
-                    throw new RuntimeException(ex);
-                }
+            if (bmpFileChooser.showOpenDialog(EntryForm.this) == JFileChooser.APPROVE_OPTION) {
+                File inputFile = bmpFileChooser.getSelectedFile();
+                currentImage = BmpFileOperations.openBmpFile(inputFile, this);
             }
-            updateLastOperation(Operations.OPEN);
+
+            oldImage.setIcon(new ImageIcon(currentImage));
             newImage.setText(null);
             newImage.setIcon(null);
+        });
+
+        saveFileButton.addActionListener(e -> {
+            if (currentImage == null) {
+                JOptionPane.showMessageDialog(this, "Not photo to save. Please perform operations", "Error", JOptionPane.ERROR_MESSAGE);
+            } else {
+                if (bmpFileChooser.showSaveDialog(EntryForm.this) == JFileChooser.APPROVE_OPTION) {
+                    File outputFile = bmpFileChooser.getSelectedFile();
+                    BmpFileOperations.saveBmpFile(currentImage, outputFile, this);
+                }
+            }
         });
 
         exitButton.addActionListener(e -> System.exit(0));

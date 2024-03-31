@@ -18,15 +18,6 @@ public class ImageUtil {
         return true;
     }
 
-    //ArrayList<ArrayList<Integer>>
-    public static void getRGBValues(BufferedImage image) {
-        for (int row=0; row < image.getWidth(); row++) {
-            for (int col = 0; col < image.getHeight(); col++) {
-
-            }
-        }
-    }
-
     public static BufferedImage readImage(File file) throws IOException {
         try (FileInputStream fileInputStream = new FileInputStream(file)) {
 
@@ -50,8 +41,7 @@ public class ImageUtil {
             byte[] imageData = new byte[bytesPerRow * height];
             fileInputStream.read(imageData);
 
-            BufferedImage bufferedImage = getBufferedImage(width, height, imageData);
-            return bufferedImage;
+            return getBufferedImage(width, height, imageData);
         }
     }
 
