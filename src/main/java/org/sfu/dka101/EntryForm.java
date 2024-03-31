@@ -1,19 +1,14 @@
 package org.sfu.dka101;
 
 import org.sfu.dka101.enums.Operations;
-import org.sfu.dka101.huffman.HuffmanEncoding;
+import org.sfu.dka101.exceptions.BmpFileException;
+import org.sfu.dka101.huffman.EncodeImage;
 import org.sfu.dka101.operations.TransformSelector;
 import org.sfu.dka101.utils.BmpFileOperations;
-import org.sfu.dka101.utils.Entropy;
-import org.sfu.dka101.utils.ImageUtil;
 
-import javax.imageio.ImageIO;
 import javax.swing.*;
-import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
-import java.io.IOException;
-import java.util.*;
 
 public class EntryForm extends JFrame{
 
@@ -41,34 +36,19 @@ public class EntryForm extends JFrame{
     public EntryForm() {
         setContentPane(EntryPanel);
         setTitle("Photoshop");
+        setIconImage(new ImageIcon(getClass().getResource("/icon.png")).getImage());
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setSize(2048, 1536);
         setLocationRelativeTo(null);
         setVisible(true);
         openFileButton.requestFocus();
 
-        JFileChooser bmpFileChooser = BmpFileOperations.getBmpFileChooser();
-
         openFileButton.addActionListener(e -> {
-            if (bmpFileChooser.showOpenDialog(EntryForm.this) == JFileChooser.APPROVE_OPTION) {
-                File inputFile = bmpFileChooser.getSelectedFile();
-                currentImage = BmpFileOperations.openBmpFile(inputFile, this);
-            }
-
-            oldImage.setIcon(new ImageIcon(currentImage));
-            newImage.setText(null);
-            newImage.setIcon(null);
+            openFileAction();
         });
 
         saveFileButton.addActionListener(e -> {
-            if (currentImage == null) {
-                JOptionPane.showMessageDialog(this, "Not photo to save. Please perform operations", "Error", JOptionPane.ERROR_MESSAGE);
-            } else {
-                if (bmpFileChooser.showSaveDialog(EntryForm.this) == JFileChooser.APPROVE_OPTION) {
-                    File outputFile = bmpFileChooser.getSelectedFile();
-                    BmpFileOperations.saveBmpFile(currentImage, outputFile, this);
-                }
-            }
+            saveFileAction();
         });
 
         exitButton.addActionListener(e -> System.exit(0));
@@ -84,10 +64,14 @@ public class EntryForm extends JFrame{
     private void eventListener(Operations operation){
         if (currentImage != null) {
             if (operation == Operations.HUFFMAN) {
-                String outputText = huffmanProcessing();
-                oldImage.setIcon(new ImageIcon(currentImage));
-                newImage.setIcon(null);
-                newImage.setText(outputText);
+                try {
+                    String outputText = EncodeImage.getHuffmanEncodeDetails(currentImage);
+                    oldImage.setIcon(new ImageIcon(currentImage));
+                    newImage.setIcon(null);
+                    newImage.setText(outputText);
+                } catch (Exception e) {
+                    JOptionPane.showMessageDialog(this, "Cannot compute Huffman: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                }
             } else {
                 BufferedImage oldImage = currentImage;
                 currentImage = TransformSelector.selectTransform(operation).transform(currentImage);
@@ -126,36 +110,41 @@ public class EntryForm extends JFrame{
                 case LENS_BLUR -> lensBlurButton.setEnabled(value);
             }
     }
-    
-    public String huffmanProcessing() {
-        if (ImageUtil.isImageGreyscale(currentImage)) {
-            HashMap<Integer, Integer> frequencyMap = new HashMap<>();
-            for (int row=0; row < currentImage.getWidth(); row++) {
-                for (int col = 0; col < currentImage.getHeight(); col++) {
-                    int pixelValue = new Color(currentImage.getRGB(row, col)).getRed();
-                    frequencyMap.put(pixelValue, frequencyMap.getOrDefault(pixelValue, 0) + 1);
+
+    private void openFileAction() {
+        JFileChooser bmpFileChooser = BmpFileOperations.getBmpFileChooser();
+        if (bmpFileChooser.showOpenDialog(EntryForm.this) == JFileChooser.APPROVE_OPTION) {
+            File inputFile = bmpFileChooser.getSelectedFile();
+            try {
+                currentImage = BmpFileOperations.openBmpFile(inputFile);
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Error opening file: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+        if(currentImage != null){
+            oldImage.setIcon(new ImageIcon(currentImage));
+            newImage.setText(null);
+            newImage.setIcon(null);
+            updateLastOperation(Operations.FILE);
+        }
+    }
+
+    private void saveFileAction() {
+        if (newImage.getIcon() == null) {
+            JOptionPane.showMessageDialog(this, "Not photo to save. Please perform operations", "Error", JOptionPane.ERROR_MESSAGE);
+        } else {
+            JFileChooser bmpFileChooser = BmpFileOperations.getBmpFileChooser();
+            if (bmpFileChooser.showSaveDialog(EntryForm.this) == JFileChooser.APPROVE_OPTION) {
+                File outputFile = bmpFileChooser.getSelectedFile();
+                try {
+                    if (BmpFileOperations.saveBmpFile(currentImage, outputFile, this)) {
+                        JOptionPane.showMessageDialog(this, "Saved Photo successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+                        updateLastOperation(Operations.FILE);
+                    }
+                } catch (BmpFileException ex) {
+                    JOptionPane.showMessageDialog(this, "Error saving file: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
                 }
             }
-
-            HashMap<Integer, String> codeMap = HuffmanEncoding.getEncodingMap(frequencyMap);
-
-            long imageCodeLength = 0;
-            for (Map.Entry<Integer, Integer> entry : frequencyMap.entrySet()) {
-                imageCodeLength += (long) entry.getValue() * codeMap.get(entry.getKey()).length();
-            }
-
-            int totalPixels = currentImage.getHeight() * currentImage.getWidth();
-            float averageCodeLength = (float) imageCodeLength / totalPixels;
-            double entropy = Entropy.getEntropy(new ArrayList<>(frequencyMap.values()));
-
-            return String.format("Entropy = %.4f \n Average Huffman Code Length = %.4f", entropy, averageCodeLength);
-        } else {
-            ErrorDialog huffmanDialog = new ErrorDialog();
-            huffmanDialog.setDialogLabelText("The image is not Grayscale!");
-            huffmanDialog.pack();
-            huffmanDialog.setLocationRelativeTo(this);
-            huffmanDialog.setVisible(true);
-            return "";
         }
     }
 
