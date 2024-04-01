@@ -1,22 +1,18 @@
 package org.sfu.dka101;
 
 import org.sfu.dka101.enums.Operations;
+import org.sfu.dka101.exceptions.BmpFileException;
+import org.sfu.dka101.huffman.EncodeImage;
+import org.sfu.dka101.operations.TransformSelector;
+import org.sfu.dka101.utils.BmpFileOperations;
 
-import javax.imageio.ImageIO;
 import javax.swing.*;
-import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
-import java.awt.image.ColorModel;
-import java.awt.image.WritableRaster;
 import java.io.File;
-import java.io.IOException;
-import java.nio.Buffer;
 
 public class EntryForm extends JFrame{
 
-    private BufferedImage bufferedImage;
+    private BufferedImage currentImage;
 
     private Operations lastOperation;
 
@@ -27,87 +23,129 @@ public class EntryForm extends JFrame{
     private JButton huffmanButton;
     private JButton orderedDitheringButton;
     private JButton autoLevelButton;
-    private JButton button1;
-    private JButton button2;
-    private JLabel image1;
-    private JLabel image2;
-    private JPanel OpenClose;
-    private JPanel CoreOperations;
-    private JPanel OptOperations;
+    private JButton lensBlurButton;
+    private JButton vignetteButton;
+    private JLabel oldImage;
+    private JLabel newImage;
     private JPanel Images;
+    private JPanel OptOperations;
+    private JPanel CoreOperations;
+    private JPanel OpenClose;
+    private JButton saveFileButton;
 
     public EntryForm() {
         setContentPane(EntryPanel);
-        setTitle("Test Application");
+        setTitle("Photoshop");
+        setIconImage(new ImageIcon(getClass().getResource("/icon.png")).getImage());
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setSize(2048, 1536);
         setLocationRelativeTo(null);
         setVisible(true);
+        openFileButton.requestFocus();
 
-        openFileButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                JFileChooser jFileChooser = new JFileChooser();
-                if (jFileChooser.showOpenDialog(EntryForm.this) == JFileChooser.APPROVE_OPTION) {
-                    File f = jFileChooser.getSelectedFile();
-                    try {
-                        bufferedImage = ImageIO.read(f);
-                        image1.setIcon(new ImageIcon(bufferedImage));
-                    } catch (IOException ex) {
-                        throw new RuntimeException(ex);
-                    }
-                }
-            }
+        openFileButton.addActionListener(e -> {
+            openFileAction();
         });
-        exitButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                System.exit(0);
-            }
-        });
-        grayscaleButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if (bufferedImage != null) {
-                    ColorModel colorModel = bufferedImage.getColorModel();
-                    boolean isAlphaPremultiplied = colorModel.isAlphaPremultiplied();
-                    WritableRaster writableRaster = bufferedImage.copyData(null);
-                    BufferedImage oldImage = new BufferedImage(colorModel, writableRaster, isAlphaPremultiplied, null);
 
-                    for (int row=0; row < bufferedImage.getWidth(); row++) {
-                        for (int col = 0; col < bufferedImage.getHeight(); col++) {
-                            int rgbValue = bufferedImage.getRGB(row, col);
-                            float rValue = new Color(rgbValue).getRed();
-                            float gValue = new Color(rgbValue).getBlue();
-                            float bValue = new Color(rgbValue).getGreen();
-                            float aValue = new Color(rgbValue).getAlpha();
-                            int grayscale = (int) ((0.299 * rValue) + (0.587 * gValue) + (0.114 * bValue));
-                            bufferedImage.setRGB(row, col, new Color(grayscale, grayscale, grayscale).getRGB());
-                        }
-                    }
-                    image1.setIcon(new ImageIcon(oldImage));
-                    image2.setIcon(new ImageIcon(bufferedImage));
-                    enableLastOperation();
-                    lastOperation = Operations.GRAYSCALE;
-                    disableLastOperation();
-                }
-            }
+        saveFileButton.addActionListener(e -> {
+            saveFileAction();
         });
+
+        exitButton.addActionListener(e -> System.exit(0));
+        
+        grayscaleButton.addActionListener(e -> eventListener(Operations.GRAYSCALE));
+        orderedDitheringButton.addActionListener(e -> eventListener(Operations.ORDERED_DITHERING));
+        autoLevelButton.addActionListener(e -> eventListener(Operations.AUTO_LEVEL));
+        lensBlurButton.addActionListener(e-> eventListener(Operations.LENS_BLUR));
+        vignetteButton.addActionListener(e -> eventListener(Operations.VIGNETTE));
+        huffmanButton.addActionListener(e -> eventListener(Operations.HUFFMAN));
     }
 
-    public void enableLastOperation() {
+    private void eventListener(Operations operation){
+        if (currentImage != null) {
+            if (operation == Operations.HUFFMAN) {
+                try {
+                    String outputText = EncodeImage.getHuffmanEncodeDetails(currentImage);
+                    oldImage.setIcon(new ImageIcon(currentImage));
+                    newImage.setIcon(null);
+                    newImage.setText(outputText);
+                } catch (Exception e) {
+                    JOptionPane.showMessageDialog(this, "Cannot compute Huffman: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            } else {
+                BufferedImage oldImage = currentImage;
+                currentImage = TransformSelector.selectTransform(operation).transform(currentImage);
+                updateImageInForm(oldImage);
+                updateLastOperation(operation);
+            }
+        }
+    }
+
+    private void updateImageInForm(BufferedImage oldImage) {
+        this.oldImage.setIcon(new ImageIcon(oldImage));
+        newImage.setText(null);
+        newImage.setIcon(new ImageIcon(currentImage));
+    }
+
+    private void updateLastOperation(Operations operation) {
+        enableLastOperation();
+        lastOperation = operation;
+        disableLastOperation();
+    }
+
+    private void enableLastOperation() {
         changeLastOperationStatus(true);
     }
 
-    public void disableLastOperation() {
+    private void disableLastOperation() {
         changeLastOperationStatus(false);
     }
 
-    public void changeLastOperationStatus(boolean value) {
+    private void changeLastOperationStatus(boolean value) {
         if (lastOperation != null)
             switch (lastOperation){
                 case GRAYSCALE -> grayscaleButton.setEnabled(value);
+                case ORDERED_DITHERING -> orderedDitheringButton.setEnabled(value);
+                case AUTO_LEVEL -> autoLevelButton.setEnabled(value);
+                case LENS_BLUR -> lensBlurButton.setEnabled(value);
             }
+    }
+
+    private void openFileAction() {
+        JFileChooser bmpFileChooser = BmpFileOperations.getBmpFileChooser();
+        if (bmpFileChooser.showOpenDialog(EntryForm.this) == JFileChooser.APPROVE_OPTION) {
+            File inputFile = bmpFileChooser.getSelectedFile();
+            try {
+                currentImage = BmpFileOperations.openBmpFile(inputFile);
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Error opening file: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+        if(currentImage != null){
+            oldImage.setIcon(new ImageIcon(currentImage));
+            newImage.setText(null);
+            newImage.setIcon(null);
+            updateLastOperation(Operations.FILE);
+        }
+    }
+
+    private void saveFileAction() {
+        if (newImage.getIcon() == null) {
+            JOptionPane.showMessageDialog(this, "Not photo to save. Please perform operations", "Error", JOptionPane.ERROR_MESSAGE);
+        } else {
+            JFileChooser bmpFileChooser = BmpFileOperations.getBmpFileChooser();
+            if (bmpFileChooser.showSaveDialog(EntryForm.this) == JFileChooser.APPROVE_OPTION) {
+                File outputFile = bmpFileChooser.getSelectedFile();
+                try {
+                    if (BmpFileOperations.saveBmpFile(currentImage, outputFile, this)) {
+                        JOptionPane.showMessageDialog(this, "Saved Photo successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+                        updateLastOperation(Operations.FILE);
+                    }
+                } catch (BmpFileException ex) {
+                    JOptionPane.showMessageDialog(this, "Error saving file: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        }
     }
 
     public static void main(String[] args) {
